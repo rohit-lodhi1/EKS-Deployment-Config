@@ -1,0 +1,146 @@
+
+
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: parent-project
+spec:
+  serviceName: "parent-project"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: parent-project
+  template:
+    metadata:
+      labels:
+        app: parent-project
+    spec:
+      imagePullSecrets:
+      - name: aig-ecr-secret
+      containers:
+        - name: config-server
+          image: 844605633964.dkr.ecr.af-south-1.amazonaws.com/config-server:latest
+          imagePullPolicy: Always
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: docker
+            - name: GITHUB_URL
+              value: https://github.com/rahulhencha2553/AIG_CONFIG_LOCAL.git
+            - name: GITHUB_USERNAME
+              value: rahulhencha2553
+            - name: GITHUB_PASSWORD
+              value: github_token
+            - name: EUREKA_SERVER_HOST
+              value: parent-project-0.parent-project
+            - name: PORT
+              value: "9091"
+#            - name: SPRING_PROFILES_ACTIVE
+#              value: default
+#              valueFrom:
+#                configMapKeyRef:
+#                  name: config-service
+#                  key: spring_profile
+            - name: EUREKA_SERVER_ADDRESS
+              value: http://parent-project-0.parent-project:8761/eureka
+#              valueFrom:
+#                configMapKeyRef:
+#                  name: config-service
+#                  key: eureka_service_address
+            - name: SERVICE_NAME
+              value: parent-project
+#        - name: mysql
+#          image: mysql
+#          imagePullPolicy: Always
+#          env:          
+#            - name: MYSQL_ROOT_PASSWORD
+#              valueFrom:
+#                configMapKeyRef:
+#                  name: config-service
+#                  key: mysql_password
+        - name: eureka-server
+          image: 844605633964.dkr.ecr.af-south-1.amazonaws.com/eureka-server:latest
+          imagePullPolicy: Always
+          env:
+             - name: SPRING_PROFILES_ACTIVE
+               value: docker
+             - name: EUREKA_SERVER_HOST
+               value: eureka-server
+             - name: PORT
+               value: "8761"
+             - name: SPRING_PROFILES_ACTIVE
+               valueFrom:
+                configMapKeyRef:
+                  name: config-service
+                  key: spring_profile
+             - name: EUREKA_SERVER_ADDRESS
+               valueFrom:
+                configMapKeyRef:
+                  name: config-service
+                  key: eureka_service_address
+             - name: SERVICE_NAME
+               valueFrom:
+                configMapKeyRef:
+                  name: config-service
+                  key: service_name
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-service
+data:
+  eureka_service_address: http://parent-project-0.parent-project:8761/eureka
+  service_name: parent-project
+  mysql_host: mysql
+  mysql_port: "3306"
+  mysql_user: root
+  mysql_password: root
+  spring_profile: docker
+  eureka_server_url: http://parent-project-0.parent-project.default.svc.cluster.local:8761/eureka
+  
+  
+  
+---
+
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  # Unique key of the Service instance
+  name: parent-project
+  labels:
+    app: parent-project
+spec:
+  ports:
+    # Accept traffic sent to port 80
+    - name: eureka-server
+      port: 8761
+      targetPort: 8761
+      
+    - name: http-api-gateway
+      port: 80
+      targetPort: 80
+      
+#    - name: http-authentication
+#      port: 8881
+#      targetPort: 8881
+      
+      
+      
+  selector:
+    # Loadbalance traffic across Pods matching
+    # this label selector
+    app: parent-project
+  # Create an HA proxy in the cloud provider
+  # with an External IP address - *Only supported
+  # by some cloud providers*
+  type: LoadBalancer
+
+
+
+
+
+
+   

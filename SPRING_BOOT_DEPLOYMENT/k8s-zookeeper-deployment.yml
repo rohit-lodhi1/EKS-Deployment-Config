@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper
+spec:
+  ports:
+    - name: client
+      port: 2181
+      targetPort: 2181
+    - name: quorum
+      port: 2888
+      targetPort: 2888
+    - name: leader-election
+      port: 3888
+      targetPort: 3888
+  selector:
+    app: zookeeper
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zookeeper
+spec:
+  replicas: 1
+  serviceName: "zookeeper"
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+        - name: zookeeper
+          image: zookeeper:latest
+          ports:
+            - containerPort: 2181
+            - containerPort: 2888
+            - containerPort: 3888
+          env:
+            # - name: ZOO_MY_ID
+            #   valueFrom:
+            #     fieldRef:
+            #       fieldPath: metadata.index
+            - name: ZOOKEEPER_CLIENT_PORT
+              value: "2181"
+            - name: ZOOKEEPER_SECURE_CLIENT_PORT
+              value: "2281" # Example secure client port, change as necessary
+          volumeMounts:
+            - name: zookeeper-data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: zookeeper-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 1Gi
